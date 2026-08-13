@@ -2,11 +2,11 @@ DO $$
 DECLARE
   v_teacher_id uuid;
 BEGIN
-  -- 1. Get the existing dummy teacher ID
-  SELECT id INTO v_teacher_id FROM teachers LIMIT 1;
+  -- 1. Get the specific teacher ID we are using in the frontend
+  SELECT id INTO v_teacher_id FROM teachers WHERE qr_code = 'qr_talha_57' LIMIT 1;
   
   IF v_teacher_id IS NULL THEN
-    RAISE EXCEPTION 'No teacher found in the database. Please insert test users first.';
+    RAISE EXCEPTION 'Teacher qr_talha_57 not found.';
   END IF;
 
   -- 2. Delete existing bookings for this teacher's slots to avoid foreign key constraints (Optional: uncomment to wipe old data)

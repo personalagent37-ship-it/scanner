@@ -208,6 +208,21 @@ app.post('/api/bookings', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.get('/api/test-email', async (req, res) => {
+  try {
+    const mailOptions = {
+      from: process.env.GMAIL_ADDRESS,
+      to: process.env.GMAIL_ADDRESS, // Send to yourself
+      subject: 'Test Email from Render',
+      text: 'If you see this, Nodemailer is working!'
+    };
+    const info = await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: 'Email sent successfully!', info });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

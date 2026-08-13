@@ -84,7 +84,7 @@ app.get('/api/teachers/:teacher_id/qr', async (req, res) => {
 
   try {
     // Generate QR code as a PNG buffer for the full booking URL
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://teal-truffle-1399ec.netlify.app';
     const qrUrl = `${frontendUrl}/book/${teacher.qr_code}`;
     
     const qrBuffer = await QRCode.toBuffer(qrUrl);

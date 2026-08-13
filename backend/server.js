@@ -112,7 +112,9 @@ app.get('/api/teachers/by-qr/:qr_code', async (req, res) => {
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.GMAIL_ADDRESS,
     pass: process.env.GMAIL_APP_PASSWORD

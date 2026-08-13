@@ -4,7 +4,8 @@
   "description": "Faculty QR Booking System",
   "main": "backend/server.js",
   "scripts": {
-    "start": "node backend/server.js"
+    "start": "node backend/server.js",
+    "dev": "cd frontend && npm install && npm run dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

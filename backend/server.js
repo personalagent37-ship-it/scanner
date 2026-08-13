@@ -167,7 +167,7 @@ app.post('/api/bookings', async (req, res) => {
     return res.status(500).json({ error: 'Failed to create booking record' });
   }
 
-  // 5. Send Confirmation Emails (To Student AND Teacher)
+  // 5. Send Confirmation Emails (To Student AND Teacher) in the background
   try {
     const teacherName = slot.teachers?.profiles?.name || 'Your Teacher';
     
@@ -179,7 +179,7 @@ app.post('/api/bookings', async (req, res) => {
       text: `Hello ${student_name},\n\nYour booking with ${teacherName} on ${slot.date} from ${slot.start_time} to ${slot.end_time} is confirmed.\n\nThank you!`
     };
 
-    // Email 2: To the Teacher (Using their actual email from DB!)
+    // Email 2: To the Teacher
     const teacherEmail = slot.teachers?.email || process.env.GMAIL_ADDRESS; 
     const teacherMailOptions = {
       from: process.env.GMAIL_ADDRESS,
@@ -188,17 +188,20 @@ app.post('/api/bookings', async (req, res) => {
       text: `Hello ${teacherName},\n\nA student named ${student_name} (${student_email}) has just booked your free slot on ${slot.date} from ${slot.start_time} to ${slot.end_time}.\n\nPlease log in to check your dashboard.`
     };
 
-    // Send both emails
-    await transporter.sendMail(studentMailOptions);
-    await transporter.sendMail(teacherMailOptions);
+    // FIRE AND FORGET: Don't wait for emails to send before responding!
+    transporter.sendMail(studentMailOptions).catch(err => console.error("Student email failed:", err));
+    transporter.sendMail(teacherMailOptions)
+      .then(async () => {
+        // Update email_sent status if successful
+        await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
+      })
+      .catch(err => console.error("Teacher email failed:", err));
     
-    // Update email_sent status
-    await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
-    
-    res.json({ message: 'Booking successful and emails sent to both student and teacher!', booking });
+    // Respond to frontend INSTANTLY
+    return res.json({ message: 'Booking successful! Emails are being sent in the background.', booking });
   } catch (emailError) {
-    console.error("Email failed:", emailError);
-    res.json({ message: 'Booking successful, but failed to send emails.', booking, emailError: emailError.message });
+    console.error("Email block failed:", emailError);
+    return res.json({ message: 'Booking successful, but failed to trigger emails.', booking, emailError: emailError.message });
   }
 });
 

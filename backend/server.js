@@ -84,23 +84,7 @@ app.get('/api/teachers/:teacher_id/qr', async (req, res) => {
 
   try {
     // Generate QR code as a PNG buffer for the full booking URL
-    let frontendUrl = process.env.FRONTEND_URL;
-    
-    if (!frontendUrl) {
-      // Resolve the true local Wi-Fi IP address instead of 'localhost' so phones can connect
-      const os = require('os');
-      let localIp = 'localhost';
-      const interfaces = os.networkInterfaces();
-      for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-          if (iface.family === 'IPv4' && !iface.internal) {
-            localIp = iface.address;
-            break;
-          }
-        }
-      }
-      frontendUrl = `http://${localIp}:5173`;
-    }
+    const frontendUrl = 'https://teal-truffle-1399ec.netlify.app';
 
     const qrUrl = `${frontendUrl}/book/${teacher.qr_code}`;
     

@@ -125,9 +125,13 @@ const transporter = nodemailer.createTransport({
 });
 
 app.post('/api/bookings', async (req, res) => {
+  console.log("\n=== INCOMING BOOKING REQUEST ===");
+  console.log("Body:", req.body);
+
   const { slot_id, student_email, student_name } = req.body;
   
   if (!slot_id || !student_email || !student_name) {
+    console.error("❌ Missing fields:", { slot_id, student_email, student_name });
     return res.status(400).json({ error: 'Missing slot_id, student_email, or student_name' });
   }
 
@@ -138,26 +142,38 @@ app.post('/api/bookings', async (req, res) => {
     .eq('id', slot_id)
     .single();
 
-  if (slotError || !slot) return res.status(404).json({ error: 'Slot not found' });
+  if (slotError || !slot) {
+    console.error("❌ Supabase Error (Fetch Slot):", slotError);
+    return res.status(404).json({ error: 'Slot not found' });
+  }
   if (slot.status !== 'free') return res.status(400).json({ error: 'Slot is already booked!' });
 
   // 2. Fetch a dummy student ID to satisfy the foreign key (for testing)
-  const { data: student } = await supabase
+  const { data: student, error: studentError } = await supabase
     .from('profiles')
     .select('id')
     .eq('role', 'student')
     .limit(1)
     .single();
     
-  if (!student) return res.status(500).json({ error: 'No dummy student found in DB for testing' });
+  if (studentError || !student) {
+    console.error("❌ Supabase Error (Fetch Student):", studentError);
+    return res.status(500).json({ error: 'No dummy student found in DB for testing' });
+  }
 
   // 3. Mark slot as booked
-  const { error: updateError } = await supabase
+  const { data: updateData, error: updateError } = await supabase
     .from('slots')
     .update({ status: 'booked' })
-    .eq('id', slot_id);
+    .eq('id', slot_id)
+    .select();
 
-  if (updateError) return res.status(500).json({ error: 'Failed to update slot status' });
+  console.log("Supabase Update Slot Response:", { updateData, updateError });
+
+  if (updateError) {
+    console.error("❌ Supabase Error (Update Slot):", updateError);
+    return res.status(500).json({ error: 'Failed to update slot status: ' + updateError.message });
+  }
 
   // 4. Create booking record
   const { data: booking, error: bookingError } = await supabase
@@ -166,7 +182,10 @@ app.post('/api/bookings', async (req, res) => {
     .select()
     .single();
 
+  console.log("Supabase Insert Booking Response:", { booking, bookingError });
+
   if (bookingError) {
+    console.error("❌ Supabase Error (Insert Booking):", bookingError);
     // Rollback slot if booking fails
     await supabase.from('slots').update({ status: 'free' }).eq('id', slot_id);
     return res.status(500).json({ error: 'Failed to create booking record' });
@@ -194,15 +213,19 @@ app.post('/api/bookings', async (req, res) => {
     };
 
     // Wait for emails to send to catch errors immediately
+    console.log("Sending email to student:", student_email);
     await transporter.sendMail(studentMailOptions);
+    
+    console.log("Sending email to teacher:", teacherEmail);
     await transporter.sendMail(teacherMailOptions);
     
     // Update email_sent status if successful
     await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
     
+    console.log("✅ Booking completely successful. Replying to frontend.");
     return res.json({ message: 'Booking successful! Emails sent successfully to student and teacher.', booking });
   } catch (emailError) {
-    console.error("Email block failed:", emailError);
+    console.error("❌ Email block failed:", emailError);
     return res.json({ message: 'Booking successful in database, but SMTP EMAIL FAILED: ' + emailError.message, booking });
   }
 });

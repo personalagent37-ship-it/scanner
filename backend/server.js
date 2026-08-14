@@ -87,9 +87,19 @@ app.get('/api/teachers/:teacher_id/qr', async (req, res) => {
     let frontendUrl = process.env.FRONTEND_URL;
     
     if (!frontendUrl) {
-      // Dynamically use the IP address the request came from for perfect local testing
-      const host = req.hostname || 'localhost';
-      frontendUrl = `http://${host}:5173`;
+      // Resolve the true local Wi-Fi IP address instead of 'localhost' so phones can connect
+      const os = require('os');
+      let localIp = 'localhost';
+      const interfaces = os.networkInterfaces();
+      for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            localIp = iface.address;
+            break;
+          }
+        }
+      }
+      frontendUrl = `http://${localIp}:5173`;
     }
 
     const qrUrl = `${frontendUrl}/book/${teacher.qr_code}`;
@@ -211,7 +221,13 @@ app.post('/api/bookings', async (req, res) => {
     };
 
     // Email 2: To the Teacher
-    const teacherEmail = slot.teachers?.email || GMAIL_USER; 
+    let teacherEmail = slot.teachers?.email || GMAIL_USER; 
+    
+    // Prevent bounces for our dummy SQL data (Alan Turing, etc)
+    if (teacherEmail.includes('@example.com')) {
+      teacherEmail = GMAIL_USER; // Send to yourself instead of the fake email
+    }
+
     const teacherMailOptions = {
       from: GMAIL_USER,
       to: teacherEmail,

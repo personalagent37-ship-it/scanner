@@ -213,21 +213,24 @@ app.post('/api/bookings', async (req, res) => {
       text: `Hello ${teacherName},\n\nA student named ${student_name} (${student_email}) has just booked your free slot on ${slot.date} from ${slot.start_time} to ${slot.end_time}.\n\nPlease log in to check your dashboard.`
     };
 
-    // Wait for emails to send to catch errors immediately
-    console.log("Sending email to student:", student_email);
-    await transporter.sendMail(studentMailOptions);
+    // FIRE AND FORGET: Send emails in the background so the frontend doesn't freeze!
+    console.log("Starting background email to student:", student_email);
+    transporter.sendMail(studentMailOptions).catch(err => console.error("❌ Student email failed:", err));
     
-    console.log("Sending email to teacher:", teacherEmail);
-    await transporter.sendMail(teacherMailOptions);
+    console.log("Starting background email to teacher:", teacherEmail);
+    transporter.sendMail(teacherMailOptions)
+      .then(async () => {
+        // Update email_sent status if successful
+        await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
+        console.log("✅ Background emails finished sending.");
+      })
+      .catch(err => console.error("❌ Teacher email failed:", err));
     
-    // Update email_sent status if successful
-    await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
-    
-    console.log("✅ Booking completely successful. Replying to frontend.");
-    return res.json({ message: 'Booking successful! Emails sent successfully to student and teacher.', booking });
+    console.log("✅ Booking completely successful. Replying to frontend INSTANTLY.");
+    return res.json({ message: 'Booking successful! Confirmation emails are on their way.', booking });
   } catch (emailError) {
     console.error("❌ Email block failed:", emailError);
-    return res.json({ message: 'Booking successful in database, but SMTP EMAIL FAILED: ' + emailError.message, booking });
+    return res.json({ message: 'Booking successful in database, but SMTP EMAIL setup failed: ' + emailError.message, booking });
   }
 });
 

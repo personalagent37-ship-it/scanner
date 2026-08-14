@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
-const API_BASE = 'https://scanner-6qmz.onrender.com/api';
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname.match(/^[0-9.]+$/))
+  ? `http://${window.location.hostname}:3000/api` 
+  : 'https://scanner-6qmz.onrender.com/api';
 
 // --- Home / In-App Scanner Component ---
 function Home() {

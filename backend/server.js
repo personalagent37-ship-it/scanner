@@ -111,11 +111,16 @@ app.get('/api/teachers/by-qr/:qr_code', async (req, res) => {
 // 6. BOOK a slot and send email (Sections 5 & 6)
 const nodemailer = require('nodemailer');
 
+const GMAIL_USER = (process.env.GMAIL_ADDRESS || 'codingpython57@gmail.com').replace(/['"]/g, '').trim();
+const GMAIL_PASS = (process.env.GMAIL_APP_PASSWORD || 'pngm pgrb dyzi izzl').replace(/['"]/g, '').replace(/\s+/g, '');
+
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
-    user: process.env.GMAIL_ADDRESS || 'codingpython57@gmail.com',
-    pass: process.env.GMAIL_APP_PASSWORD || 'pngm pgrb dyzi izzl'
+    user: GMAIL_USER,
+    pass: GMAIL_PASS.replace(/\s+/g, '')
   }
 });
 
@@ -173,44 +178,42 @@ app.post('/api/bookings', async (req, res) => {
     
     // Email 1: To the Student
     const studentMailOptions = {
-      from: process.env.GMAIL_ADDRESS,
+      from: GMAIL_USER,
       to: student_email,
       subject: 'Booking Confirmed!',
       text: `Hello ${student_name},\n\nYour booking with ${teacherName} on ${slot.date} from ${slot.start_time} to ${slot.end_time} is confirmed.\n\nThank you!`
     };
 
     // Email 2: To the Teacher
-    const teacherEmail = slot.teachers?.email || process.env.GMAIL_ADDRESS; 
+    const teacherEmail = slot.teachers?.email || GMAIL_USER; 
     const teacherMailOptions = {
-      from: process.env.GMAIL_ADDRESS,
+      from: GMAIL_USER,
       to: teacherEmail,
       subject: 'New Slot Booking Alert!',
       text: `Hello ${teacherName},\n\nA student named ${student_name} (${student_email}) has just booked your free slot on ${slot.date} from ${slot.start_time} to ${slot.end_time}.\n\nPlease log in to check your dashboard.`
     };
 
-    // FIRE AND FORGET: Don't wait for emails to send before responding!
-    transporter.sendMail(studentMailOptions).catch(err => console.error("Student email failed:", err));
-    transporter.sendMail(teacherMailOptions)
-      .then(async () => {
-        // Update email_sent status if successful
-        await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
-      })
-      .catch(err => console.error("Teacher email failed:", err));
-    
-    // Respond to frontend INSTANTLY
-    return res.json({ message: 'Booking successful! Emails are being sent in the background.', booking });
-  } catch (emailError) {
-    console.error("Email block failed:", emailError);
-    return res.json({ message: 'Booking successful, but failed to trigger emails.', booking, emailError: emailError.message });
-  }
+    // Wait for emails to send to catch errors immediately
+    try {
+      await transporter.sendMail(studentMailOptions);
+      await transporter.sendMail(teacherMailOptions);
+      
+      // Update email_sent status if successful
+      await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
+      
+      return res.json({ message: 'Booking successful! Emails sent successfully to student and teacher.', booking });
+    } catch (emailError) {
+      console.error("Email block failed:", emailError);
+      return res.json({ message: 'Booking successful in database, but SMTP EMAIL FAILED: ' + emailError.message, booking });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
 app.get('/api/test-email', async (req, res) => {
   try {
     const mailOptions = {
-      from: process.env.GMAIL_ADDRESS,
-      to: process.env.GMAIL_ADDRESS, // Send to yourself
+      from: GMAIL_USER,
+      to: GMAIL_USER, // Send to yourself
       subject: 'Test Email from Render',
       text: 'If you see this, Nodemailer is working!'
     };

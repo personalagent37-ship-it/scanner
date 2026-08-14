@@ -16,7 +16,7 @@ function Home() {
     // Fetch a valid teacher ID so the demo QR code on screen actually works
     const fetchFirstTeacher = async () => {
       try {
-        const res = await fetch(`${API_BASE}/teachers/by-qr/qr_talha_57`); // We know Talha exists now
+        const res = await fetch(`${API_BASE}/teachers/by-qr/qr_alan_turing`); 
         if (res.ok) {
           const data = await res.json();
           setDemoTeacherId(data.teacher.id);
@@ -61,7 +61,7 @@ function Home() {
 
   // HARDCODED scanner function per Boss's instructions (fallback testing)
   const simulateScan = () => {
-    const hardcodedQr = 'qr_talha_57'; // Updated to point to the new teacher!
+    const hardcodedQr = 'qr_alan_turing'; // Updated to point to the new professional teacher!
     // Instead of setting state, navigate to the new route
     navigate(`/book/${hardcodedQr}`);
   };

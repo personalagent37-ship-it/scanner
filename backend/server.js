@@ -172,7 +172,7 @@ app.post('/api/bookings', async (req, res) => {
     return res.status(500).json({ error: 'Failed to create booking record' });
   }
 
-  // 5. Send Confirmation Emails (To Student AND Teacher) in the background
+  // 5. Send Confirmation Emails (To Student AND Teacher)
   try {
     const teacherName = slot.teachers?.profiles?.name || 'Your Teacher';
     
@@ -194,18 +194,17 @@ app.post('/api/bookings', async (req, res) => {
     };
 
     // Wait for emails to send to catch errors immediately
-    try {
-      await transporter.sendMail(studentMailOptions);
-      await transporter.sendMail(teacherMailOptions);
-      
-      // Update email_sent status if successful
-      await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
-      
-      return res.json({ message: 'Booking successful! Emails sent successfully to student and teacher.', booking });
-    } catch (emailError) {
-      console.error("Email block failed:", emailError);
-      return res.json({ message: 'Booking successful in database, but SMTP EMAIL FAILED: ' + emailError.message, booking });
-    }
+    await transporter.sendMail(studentMailOptions);
+    await transporter.sendMail(teacherMailOptions);
+    
+    // Update email_sent status if successful
+    await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
+    
+    return res.json({ message: 'Booking successful! Emails sent successfully to student and teacher.', booking });
+  } catch (emailError) {
+    console.error("Email block failed:", emailError);
+    return res.json({ message: 'Booking successful in database, but SMTP EMAIL FAILED: ' + emailError.message, booking });
+  }
 });
 
 const PORT = process.env.PORT || 3000;

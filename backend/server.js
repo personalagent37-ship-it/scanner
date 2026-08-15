@@ -114,7 +114,7 @@ app.get('/api/teachers/by-qr/:qr_code', async (req, res) => {
 const nodemailer = require('nodemailer');
 
 const GMAIL_USER = (process.env.GMAIL_ADDRESS || 'codingpython57@gmail.com').replace(/['"]/g, '').trim();
-const GMAIL_PASS = (process.env.GMAIL_APP_PASSWORD || 'pngm pgrb dyzi izzl').replace(/['"]/g, '').replace(/\s+/g, '');
+const GMAIL_PASS = (process.env.GMAIL_APP_PASSWORD || '').replace(/['"]/g, '').replace(/\s+/g, '');
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',

@@ -223,21 +223,21 @@ app.post('/api/bookings', async (req, res) => {
       text: `Hello ${teacherName},\n\nA student named ${student_name} (${student_email}) has just booked your free slot on ${slot.date} from ${slot.start_time} to ${slot.end_time}.\n\nPlease log in to check your dashboard.`
     };
 
-    // WAIT FOR EMAILS to catch the exact error and show it on the frontend popup!
+    // Fire emails in background so the frontend doesn't hang waiting for SMTP!
     console.log("Sending email to student:", student_email);
-    await transporter.sendMail(studentMailOptions);
+    transporter.sendMail(studentMailOptions).catch(err => console.error("Student Email Error:", err));
     
     console.log("Sending email to teacher:", teacherEmail);
-    await transporter.sendMail(teacherMailOptions);
+    transporter.sendMail(teacherMailOptions).then(async () => {
+       // Update email_sent status if successful (in the background)
+       await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
+    }).catch(err => console.error("Teacher Email Error:", err));
 
-    // Update email_sent status if successful
-    await supabase.from('bookings').update({ email_sent: true }).eq('id', booking.id);
-    
-    console.log("✅ Booking completely successful. Replying to frontend.");
-    return res.json({ message: 'Booking successful! Both emails sent successfully.', booking });
+    console.log("✅ Booking completely successful in DB. Replying to frontend instantly.");
+    return res.json({ message: 'Booking successful! Confirmation emails are being sent in the background.', booking });
   } catch (emailError) {
     console.error("❌ Email block failed:", emailError);
-    return res.json({ error: 'Booking saved in DB, but SMTP EMAIL FAILED: ' + emailError.message });
+    return res.json({ error: 'Booking saved in DB, but email process failed: ' + emailError.message });
   }
 });
 
